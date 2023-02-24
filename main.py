@@ -1,4 +1,5 @@
 from fastapi import FastAPI, status, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 from database import SessionLocal
@@ -9,9 +10,17 @@ import models
 
 app = FastAPI()
 
-
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # models
 class Log(BaseModel): #serializer
+    log_name: str
     message: str
     priority: str
     source: str
@@ -21,6 +30,7 @@ class Log(BaseModel): #serializer
         
         
 class Logs(BaseModel):
+    log_name: str
     message: str
     priority: str
     source: str
@@ -71,6 +81,7 @@ def get_log(log_id:int):
     )
 def create_log(log:Log):
     new_log=models.Log(
+        log_name=log.log_name,
         message=log.message,
         priority=log.priority,
         source=log.source
@@ -93,13 +104,14 @@ async def update_log(log_id:int, log:Log):
     log_to_update.message = log.message
     log_to_update.priority = log.priority
     log_to_update.source = log.source
+    log_to_update.log_name = log.log_name
 
     db.commit()
     return { "success": "true" }
     
 
 @app.delete("/logs/{log_id}",
-    response_model=List[Logs],
+    response_model=Logs,
     status_code=status.HTTP_200_OK
     )
 def delete_log(log_id:int):

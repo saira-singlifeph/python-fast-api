@@ -7,6 +7,7 @@ from sqlalchemy.sql import func
 class Log(Base):
     __tablename__   ='logs'
     id              = Column(Integer,primary_key=True,autoincrement=True)
+    log_name        = Column(String(255), nullable=False)
     message         = Column(Text,nullable=False)
     priority        = Column(String(255),nullable=False)
     source          = Column(String(255),nullable=False)
