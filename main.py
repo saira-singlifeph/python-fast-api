@@ -22,21 +22,28 @@ app.add_middleware(
 class Log(BaseModel): #serializer
     log_name: str
     message: str
-    priority: str
+    priority: models.prioritiesEnum
     source: str
     
     class Config:
         orm_mode=True
-        
-        
+       
 class Logs(BaseModel):
     log_name: str
     message: str
-    priority: str
+    priority: models.prioritiesEnum
     source: str
     id: int
     created_at: datetime
     updated_at: datetime
+    
+    class Config:
+        orm_mode=True
+        
+
+class QueryLog(BaseModel): #serializer
+    priority: models.prioritiesEnum
+    created_at: datetime
     
     class Config:
         orm_mode=True
@@ -47,13 +54,16 @@ db = SessionLocal()
     response_model=List[Logs], 
     status_code=status.HTTP_200_OK     
     )
-async def query_logs(level: str = "", createdDate: str = ""):
+async def query_logs(level: str = "", createdDate: str = None):
     Logs = models.Log
-    query = db.query(Logs).filter(
-        and_(Logs.priority.like(level),
-        (func.date(Logs.created_at) == createdDate))
-    ).all()
+
+    if createdDate is not None:
+        query = db.query(Logs).filter(
+        and_(Logs.priority.in_(level),
+        (func.date(Logs.created_at) == createdDate))).all()
+        return query
     
+    query = db.query(Logs).filter((Logs.priority.like(level))).all()
     return query
     
 
