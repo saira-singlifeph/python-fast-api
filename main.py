@@ -5,7 +5,7 @@ from typing import List
 from database import SessionLocal
 from datetime import datetime
 from sqlalchemy import and_
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, desc
 import models
 
 app = FastAPI()
@@ -62,12 +62,12 @@ async def query_logs(level: str = "", createdDate: str = ""):
         status_code=status.HTTP_200_OK
         )
 def get_all_logs():
-    logs = db.query(models.Log).all()
+    logs = db.query(models.Log).order_by(desc(models.Log.created_at)).all()
     return logs
     
 
 @app.get("/logs/{log_id}", 
-        response_model=Log, 
+        response_model=Logs, 
         status_code=status.HTTP_200_OK
         )
 def get_log(log_id:int):
@@ -96,15 +96,16 @@ def create_log(log:Log):
 @app.put("/logs/{log_id}",
     status_code=status.HTTP_200_OK
     )
-async def update_log(log_id:int, log:Log):
+async def update_log(log_id:int, details:Log):
     log_to_update = db.query(models.Log).get({"id": log_id})
     
     if log_to_update is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,detail="Log Not Found")
-    log_to_update.message = log.message
-    log_to_update.priority = log.priority
-    log_to_update.source = log.source
-    log_to_update.log_name = log.log_name
+    
+    log_to_update.message = details.message
+    log_to_update.priority = details.priority
+    log_to_update.source = details.source
+    log_to_update.log_name = details.log_name
 
     db.commit()
     return { "success": "true" }
