@@ -48,27 +48,45 @@ db = SessionLocal()
     status_code=status.HTTP_200_OK     
     )
 async def query_logs(
-    level: str, 
-    createdDate: str = None,
+    level: str = None, 
+    from_date: str = None,
+    to_date: str = None,
     source: str =  None,
+    query_all: bool = False,
+    log_name : str = None
     ):
-    
     Logs = models.Log
+    
+    if level is not None:
+        if query_all is False:
+            if from_date and to_date is not None:
+                query = db.query(Logs).filter(
+                    and_(Logs.priority.like(level),
+                    (func.date(Logs.created_at).between(from_date, to_date)))).all()
+                return query
+            
+            if source is not None:
+                query = db.query(Logs).filter(
+                and_(Logs.priority.like(level),(Logs.source.like(source)))).all()
+                return query
+                
+            query = db.query(Logs).filter((Logs.priority.like(level))).all()
+            return query
 
-    if createdDate is not None:
-        query = db.query(Logs).filter(
-        and_(Logs.priority.in_(level),
-        (func.date(Logs.created_at) == createdDate))).all()
+        if query_all is True:
+            query = db.query(Logs).filter(and_(Logs.priority.like(level)),
+            (Logs.source.like(source)),(func.date(Logs.created_at).between(from_date, to_date))).all()
+            query = db.query(Logs).filter((Logs.priority.like(level))).all()
+            return query
+
+    if log_name is not None:
+        search = "%{}%".format(log_name)
+        query = db.query(Logs).filter((Logs.log_name.like(search))).all()
         return query
     
-    if source is not None:
-        query = db.query(Logs).filter(
-        and_(Logs.priority.like(level),(Logs.source.like(source)))).all()
-        return query
-    
-    query = db.query(Logs).filter((Logs.priority.like(level))).all()
-    return query
-    
+    return []
+
+
 
 @app.get("/logs", 
         response_model=List[Logs], 
