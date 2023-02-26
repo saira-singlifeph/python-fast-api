@@ -40,6 +40,11 @@ class Logs(BaseModel):
     class Config:
         orm_mode=True
     
+class Statistic(BaseModel):
+    urgent: int
+    high: int
+    medium: int
+    low: int
 
 db = SessionLocal()
 
@@ -87,7 +92,6 @@ async def query_logs(
     return []
 
 
-
 @app.get("/logs", 
         response_model=List[Logs], 
         status_code=status.HTTP_200_OK
@@ -96,6 +100,25 @@ def get_all_logs():
     logs = db.query(models.Log).order_by(desc(models.Log.created_at)).all()
     return logs
     
+
+@app.get("/logs/statistic/priorities",
+    response_model=Statistic,     
+    status_code=status.HTTP_200_OK   
+    )
+def statistic_data():
+    Logs = models.Log
+    count_of_urgent = db.query(Logs).filter((Logs.priority.like("urgent"))).count()
+    cout_of_high = db.query(Logs).filter((Logs.priority.like("high"))).count()
+    cout_of_medium = db.query(Logs).filter((Logs.priority.like("medium"))).count()
+    cout_of_low = db.query(Logs).filter((Logs.priority.like("low"))).count()
+    
+    return {
+        'urgent': count_of_urgent, 
+        'high': cout_of_high, 
+        'medium': cout_of_medium, 
+        'low': cout_of_low
+    }
+
 
 @app.get("/logs/{log_id}", 
         response_model=Logs, 
@@ -156,8 +179,3 @@ def delete_log(log_id:int):
     db.commit()
     return log_to_delete
     
-    
-
-
-
-
