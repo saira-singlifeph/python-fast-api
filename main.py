@@ -6,6 +6,8 @@ from database import SessionLocal
 from datetime import datetime
 from sqlalchemy import and_
 from sqlalchemy.sql import func, desc
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 import models
 
 app = FastAPI()
@@ -47,6 +49,8 @@ class Statistic(BaseModel):
     low: int
 
 db = SessionLocal()
+
+levels = ("urgent", "high", "medium", "low")
 
 @app.get("/logs/query",
     response_model=List[Logs], 
@@ -101,23 +105,50 @@ def get_all_logs():
     return logs
     
 
-@app.get("/logs/statistic/priorities",
-    response_model=Statistic,     
+@app.get("/logs/statistic/count",     
     status_code=status.HTTP_200_OK   
     )
-def statistic_data():
+def statistic_count():
     Logs = models.Log
-    count_of_urgent = db.query(Logs).filter((Logs.priority.like("urgent"))).count()
-    cout_of_high = db.query(Logs).filter((Logs.priority.like("high"))).count()
-    cout_of_medium = db.query(Logs).filter((Logs.priority.like("medium"))).count()
-    cout_of_low = db.query(Logs).filter((Logs.priority.like("low"))).count()
+    count = [];
+    for level in levels:
+        query = db.query(Logs).filter((Logs.priority.like(level))).count()
+        count.append({ level: query })
     
-    return {
-        'urgent': count_of_urgent, 
-        'high': cout_of_high, 
-        'medium': cout_of_medium, 
-        'low': cout_of_low
-    }
+    return count
+
+
+@app.get("/logs/statistic/data",
+    status_code=status.HTTP_200_OK,
+    )
+def statistic_data(
+    priority_level: str = None,
+    source_type: str = None,
+    ):
+
+    Logs = models.Log
+    sources = ("unknown", "customer", "internal", "other")
+    list_items = [];
+    
+    if source_type is not None:
+        for level in levels:
+            query = db.query(Logs).filter(
+            and_(Logs.priority.like(level),(Logs.source.like(source_type)))).count()
+            list_items.append({ "type": level, "logs": query })
+
+        return list_items
+
+    
+    if priority_level is not None:
+        for source in sources:
+            query = db.query(Logs).filter(
+            and_(Logs.priority.like(priority_level),(Logs.source.like(source)))).count()
+            list_items.append({ "type": source, "logs": query })
+
+        return list_items
+    
+    return []
+
 
 
 @app.get("/logs/{log_id}", 
