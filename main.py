@@ -4,10 +4,8 @@ from pydantic import BaseModel
 from typing import List
 from database import SessionLocal
 from datetime import datetime
-from sqlalchemy import and_
+from sqlalchemy import and_, cast, String
 from sqlalchemy.sql import func, desc
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
 import models
 
 app = FastAPI()
@@ -55,7 +53,7 @@ class Statistic(BaseModel):
 
 db = SessionLocal()
 
-levels = ("urgent", "high", "medium", "low")
+levels = ('urgent', 'high', 'medium', 'low')
 
 
 @app.get("/logs/query",
@@ -76,25 +74,30 @@ async def query_logs(
         if query_all is False:
             if from_date and to_date is not None:
                 query = db.query(Logs).filter(
-                    and_(Logs.priority.like(level),
+                    and_(cast(Logs.priority, String).like(level),
                          (func.date(Logs.created_at).between(from_date, to_date)))).all()
                 return query
 
             if source is not None:
                 query = db.query(Logs).filter(
-                    and_(Logs.priority.like(level), (Logs.source.like(source)))).all()
+                    and_(cast(Logs.priority, String).like(level), (cast(Logs.source, String).like(source)))).all()
                 return query
 
-            query = db.query(Logs).filter((Logs.priority.like(level))).all()
+            query = db.query(Logs).filter(
+                (cast(Logs.priority, String).like(level))).all()
             return query
 
         if query_all is True:
-            query = db.query(Logs).filter(and_(Logs.priority.like(level)),
-                                          (Logs.source.like(source)), (func.date(Logs.created_at).between(from_date, to_date))).all()
-            query = db.query(Logs).filter((Logs.priority.like(level))).all()
+            query = db.query(Logs).filter(and_(cast(Logs.priority, String).like(level)),
+                                          (cast(Logs.source, String).like(source)), (func.date(Logs.created_at).between(from_date, to_date))).all()
             return query
 
+        query = db.query(Logs).filter(
+            (cast(Logs.priority, String).like(level))).all()
+        return query
+
     if log_name is not None:
+
         search = "%{}%".format(log_name)
         query = db.query(Logs).filter((Logs.log_name.like(search))).all()
         return query
@@ -118,7 +121,8 @@ def statistic_count():
     Logs = models.Log
     count = []
     for level in levels:
-        query = db.query(Logs).filter((Logs.priority.like(level))).count()
+        query = db.query(Logs).filter(
+            (cast(Logs.priority, String).like(level))).count()
         count.append({"count": query, "level": level})
 
     return count
@@ -139,7 +143,7 @@ def statistic_data(
     if source_type is not None:
         for level in levels:
             query = db.query(Logs).filter(
-                and_(Logs.priority.like(level), (Logs.source.like(source_type)))).count()
+                and_(cast(Logs.priority, String).like(level), (cast(Logs.source, String).like(source_type)))).count()
             list_items.append({"type": level, "logs": query})
 
         return list_items
@@ -147,7 +151,7 @@ def statistic_data(
     if priority_level is not None:
         for source in sources:
             query = db.query(Logs).filter(
-                and_(Logs.priority.like(priority_level), (Logs.source.like(source)))).count()
+                and_(cast(Logs.priority, String).like(priority_level), (cast(Logs.source, String).like(source)))).count()
             list_items.append({"type": source, "logs": query})
 
         return list_items
